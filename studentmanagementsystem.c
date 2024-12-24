@@ -233,21 +233,42 @@ void viewFeesStatus() {
 // Function to manage the fees (update fees paid)
 void manageFees() {
     int roll_no;
+    char branch[MAX_BRANCH_LEN], division[MAX_DIVISION_LEN];
+    char mode_of_payment[MAX_NAME_LEN];
+
     printf("Enter Roll Number: ");
     scanf("%d", &roll_no);
 
+    printf("Enter Branch: ");
+    getchar(); // To consume newline
+    fgets(branch, MAX_BRANCH_LEN, stdin);
+    branch[strcspn(branch, "\n")] = 0; // Remove newline
+
+    printf("Enter Division: ");
+    fgets(division, MAX_DIVISION_LEN, stdin);
+    division[strcspn(division, "\n")] = 0; // Remove newline
+
     for (int i = 0; i < total_students; i++) {
-        if (students[i].roll_no == roll_no) {
+        if (students[i].roll_no == roll_no && strcmp(students[i].branch, branch) == 0 &&
+            strcmp(students[i].division, division) == 0) {
             printf("Enter Fees Paid: ");
             float fees_paid;
             scanf("%f", &fees_paid);
+
+            printf("Enter Mode of Payment (e.g., Cash, Card, Online): ");
+            getchar(); // To consume newline
+            fgets(mode_of_payment, MAX_NAME_LEN, stdin);
+            mode_of_payment[strcspn(mode_of_payment, "\n")] = 0; // Remove newline
+
             students[i].fees_paid = fees_paid;
-            printf("Fees updated successfully!\n");
+            printf("Fees updated successfully!");
+            printf("\nMode of Payment: %s\n", mode_of_payment);
             return;
         }
     }
     printf("Student not found!\n");
 }
+
 
 // Function to view all students' data
 void viewAllStudentsData() {
@@ -337,6 +358,8 @@ int main() {
 
     return 0;
 }
+
+
 
 
 
