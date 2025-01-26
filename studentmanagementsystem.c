@@ -1,12 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #define MAX_STUDENTS 100
 #define MAX_NAME_LEN 100
 #define MAX_BRANCH_LEN 20
 #define MAX_DIVISION_LEN 10
 #define MAX_DAYS_IN_MONTH 30
+#define MAX_HOLIDAYS 10
 #define USER_ID "admin"   // Hardcoded User ID
 #define PASSWORD "1234"   // Hardcoded Password
 
@@ -24,9 +26,18 @@ typedef struct {
 
 Student students[MAX_STUDENTS];
 int total_students = 0;
+int holidays[MAX_HOLIDAYS]; // Array to store holidays
+int total_holidays = 0;
+
+// Function to convert string to lowercase
+void toLowerCase(char *str) {
+    for (int i = 0; str[i]; i++) {
+        str[i] = tolower(str[i]);
+    }
+}
 
 // Function to authenticate the user with User ID and Password
-int authenticateUser() {
+int authenticateUser () {
     char user_id[MAX_NAME_LEN], password[MAX_NAME_LEN];
     
     printf("Enter User ID: ");
@@ -76,6 +87,7 @@ void addStudent() {
     getchar(); // To consume the newline character
     fgets(new_student.branch, MAX_BRANCH_LEN, stdin);
     new_student.branch[strcspn(new_student.branch, "\n")] = 0; // Remove newline
+    toLowerCase(new_student.branch); // Convert to lowercase
 
     printf("Enter Year: ");
     scanf("%d", &new_student.year);
@@ -84,6 +96,7 @@ void addStudent() {
     getchar(); // To consume the newline character
     fgets(new_student.division, MAX_DIVISION_LEN, stdin);
     new_student.division[strcspn(new_student.division, "\n")] = 0; // Remove newline
+    toLowerCase(new_student.division); // Convert to lowercase
 
     printf("Enter Total Fees: ");
     scanf("%f", &new_student.total_fees);
@@ -94,6 +107,35 @@ void addStudent() {
     students[total_students++] = new_student;
 
     printf("Student added successfully!\n");
+}
+
+// Function to add official holidays
+void addHoliday() {
+    if (total_holidays >= MAX_HOLIDAYS) {
+        printf("Holiday limit reached!\n");
+        return;
+    }
+
+    int holiday;
+    printf("Enter the day of the holiday (1-30): ");
+    scanf("%d", &holiday);
+
+    if (holiday >= 1 && holiday <= 30) {
+        holidays[total_holidays++] = holiday;
+        printf("Holiday added successfully!\n");
+    } else {
+        printf("Invalid day. Please enter a day between 1 and 30.\n");
+    }
+}
+
+// Function to check if a day is a holiday
+int isHoliday(int day) {
+    for (int i = 0; i < total_holidays; i++) {
+        if (holidays[i] == day) {
+            return 1; // It's a holiday
+        }
+    }
+    return 0; // Not a holiday
 }
 
 // Function to mark attendance for a single student
@@ -109,10 +151,12 @@ void markAttendanceSingle() {
     getchar(); // To consume newline
     fgets(branch, MAX_BRANCH_LEN, stdin);
     branch[strcspn(branch, "\n")] = 0;
+    toLowerCase(branch); // Convert to lowercase
 
     printf("Enter Division: ");
     fgets(division, MAX_DIVISION_LEN, stdin);
     division[strcspn(division, "\n")] = 0;
+    toLowerCase(division); // Convert to lowercase
 
     printf("Enter Roll Number: ");
     scanf("%d", &roll_no);
@@ -126,9 +170,13 @@ void markAttendanceSingle() {
             printf("Enter the day (1-30) to mark attendance (1 for present, 0 for absent): ");
             scanf("%d", &day);
             if (day >= 1 && day <= MAX_DAYS_IN_MONTH) {
-                printf("Marking attendance for day %d...\n", day);
-                printf("Is the student present? (1 for present, 0 for absent): ");
-                scanf("%d", &students[i].attendance[day - 1]);
+                if (isHoliday(day)) {
+                    printf("Attendance cannot be marked on a holiday.\n");
+                } else {
+                    printf("Marking attendance for day %d...\n", day);
+                    printf("Is the student present? (1 for present, 0 for absent): ");
+                    scanf("%d", &students[i].attendance[day - 1]);
+                }
             } else {
                 printf("Invalid day.\n");
             }
@@ -154,10 +202,12 @@ void markAttendanceMultiple() {
     getchar(); // To consume newline
     fgets(branch, MAX_BRANCH_LEN, stdin);
     branch[strcspn(branch, "\n")] = 0;
+    toLowerCase(branch); // Convert to lowercase
 
     printf("Enter Division: ");
     fgets(division, MAX_DIVISION_LEN, stdin);
     division[strcspn(division, "\n")] = 0;
+    toLowerCase(division); // Convert to lowercase
 
     printf("Enter the number of present students: ");
     scanf("%d", &num_present);
@@ -180,7 +230,11 @@ void markAttendanceMultiple() {
                 }
             }
             // Mark attendance
-            students[i].attendance[0] = is_present ? 1 : 0; // For simplicity, assume marking attendance for day 1
+            if (!isHoliday(1)) { // For simplicity, assume marking attendance for day 1
+                students[i].attendance[0] = is_present ? 1 : 0;
+            } else {
+                printf("Attendance cannot be marked on a holiday.\n");
+            }
         }
     }
     printf("Attendance marked!\n");
@@ -195,12 +249,12 @@ void viewDefaulterStudents() {
         int present_days = 0;
         
         for (int j = 0; j < total_days; j++) {
-            if (students[i].attendance[j] == 1) {
+            if (students[i].attendance[j] == 1 && !isHoliday(j + 1)) { // Check if not a holiday
                 present_days++;
             }
         }
 
-        float attendance_percentage = (float)present_days / total_days * 100;
+        float attendance_percentage = (float)present_days / (total_days - total_holidays) * 100; // Adjust for holidays
         if (attendance_percentage < 75) {
             printf("Name: %s, Roll No: %d, Attendance: %.2f%%\n", students[i].name, students[i].roll_no, attendance_percentage);
         }
@@ -233,7 +287,7 @@ void viewFeesStatus() {
 // Function to manage the fees (update fees paid)
 void manageFees() {
     int roll_no;
-    char branch[MAX_BRANCH_LEN], division[MAX_DIVISION_LEN];
+    char branch[MAX_BRANCH_LEN], division[MAX_BRANCH_LEN];
     char mode_of_payment[MAX_NAME_LEN];
 
     printf("Enter Roll Number: ");
@@ -243,10 +297,12 @@ void manageFees() {
     getchar(); // To consume newline
     fgets(branch, MAX_BRANCH_LEN, stdin);
     branch[strcspn(branch, "\n")] = 0; // Remove newline
+    toLowerCase(branch); // Convert to lowercase
 
     printf("Enter Division: ");
     fgets(division, MAX_DIVISION_LEN, stdin);
     division[strcspn(division, "\n")] = 0; // Remove newline
+    toLowerCase(division); // Convert to lowercase
 
     for (int i = 0; i < total_students; i++) {
         if (students[i].roll_no == roll_no && strcmp(students[i].branch, branch) == 0 &&
@@ -260,7 +316,7 @@ void manageFees() {
             fgets(mode_of_payment, MAX_NAME_LEN, stdin);
             mode_of_payment[strcspn(mode_of_payment, "\n")] = 0; // Remove newline
 
-            students[i].fees_paid = fees_paid;
+            students[i].fees_paid += fees_paid; // Update fees paid
             printf("Fees updated successfully!");
             printf("\nMode of Payment: %s\n", mode_of_payment);
             return;
@@ -268,7 +324,6 @@ void manageFees() {
     }
     printf("Student not found!\n");
 }
-
 
 // Function to view all students' data
 void viewAllStudentsData() {
@@ -283,11 +338,11 @@ void viewAllStudentsData() {
         int total_days = MAX_DAYS_IN_MONTH; // Assuming 30 days in a month
         int present_days = 0;
         for (int j = 0; j < total_days; j++) {
-            if (students[i].attendance[j] == 1) {
+            if (students[i].attendance[j] == 1 && !isHoliday(j + 1)) { // Check if not a holiday
                 present_days++;
             }
         }
-        float attendance_percentage = (float)present_days / total_days * 100;
+        float attendance_percentage = (float)present_days / (total_days - total_holidays) * 100; // Adjust for holidays
 
         printf("Attendance: %.2f%%\n", attendance_percentage);
         printf("Fees Paid: %.2f\n", students[i].fees_paid);
@@ -304,7 +359,7 @@ void exitProgram() {
 
 // Main function to display menu and call appropriate functions
 int main() {
-    if (!authenticateUser()) {
+    if (!authenticateUser ()) {
         return 0;  // Exit if authentication fails
     }
 
@@ -315,13 +370,14 @@ int main() {
     while (1) {
         printf("\nStudent Management System\n");
         printf("1. Add Student\n");
-        printf("2. Mark Attendance for Single Student\n");
-        printf("3. Mark Attendance for Multiple Students\n");
-        printf("4. View Defaulter Students\n");
-        printf("5. View Fees Status\n");
-        printf("6. Manage Fees\n");
-        printf("7. View All Students Data\n");
-        printf("8. Exit\n");
+        printf("2. Add Official Holiday\n");
+        printf("3. Mark Attendance for Single Student\n");
+        printf("4. Mark Attendance for Multiple Students\n");
+        printf("5. View Defaulter Students\n");
+        printf("6. View Fees Status\n");
+        printf("7. Manage Fees\n");
+        printf("8. View All Students Data\n");
+        printf("9. Exit\n");
 
         printf("Enter your choice: ");
         scanf("%d", &choice);
@@ -331,24 +387,27 @@ int main() {
                 addStudent();
                 break;
             case 2:
-                markAttendanceSingle();
+                addHoliday();
                 break;
             case 3:
-                markAttendanceMultiple();
+                markAttendanceSingle();
                 break;
             case 4:
-                viewDefaulterStudents();
+                markAttendanceMultiple();
                 break;
             case 5:
-                viewFeesStatus();
+                viewDefaulterStudents();
                 break;
             case 6:
-                manageFees();
+                viewFeesStatus();
                 break;
             case 7:
-                viewAllStudentsData();
+                manageFees();
                 break;
             case 8:
+                viewAllStudentsData();
+                break;
+            case 9:
                 exitProgram();
                 break;
             default:
@@ -358,6 +417,7 @@ int main() {
 
     return 0;
 }
+
 
 
 
